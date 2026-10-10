@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>GrabClip</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Material+Symbols+Outlined&display=block" rel="stylesheet">
 <style>
   :root{
     --bg:#eef1fb;
@@ -98,6 +98,15 @@
     margin-bottom:8px;
   }
 
+  .msym{
+    font-family:'Material Symbols Outlined';
+    font-weight:normal;
+    font-style:normal;
+    font-size:15px;
+    line-height:1;
+    display:inline-block;
+  }
+
   .tabs{
     display:flex;
     gap:4px;
@@ -109,6 +118,10 @@
   }
   .tab{
     flex:1;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:5px;
     text-align:center;
     padding:10px 4px;
     border-radius:12px;
@@ -124,6 +137,7 @@
     color:#fff;
     box-shadow:0 6px 16px rgba(109,94,252,0.35);
   }
+  .tab.disabled{ opacity:0.35; pointer-events:none; }
 
   .id-row{
     background:var(--glass-soft);
@@ -284,7 +298,7 @@
       </div>
       <h1>GrabClip</h1>
     </div>
-    <p class="sub">Drop a link from FB, YouTube, or IG. Pick your quality. Copy the command. That's the whole vibe.</p>
+    <p class="sub">Drop a link from FB, YouTube, or IG. Pick your quality. Copy the command. That's the whole vibe — no cap.</p>
 
     <label>Source</label>
     <div class="tabs" id="tabs">
@@ -299,7 +313,14 @@
       <input id="linkInput" type="text" placeholder="https://www.facebook.com/reel/---LINK---" autocomplete="off">
     </div>
 
-    <label>Output quality</label>
+    <label>Content</label>
+    <div class="tabs" id="contentTabs">
+      <div class="tab active" data-content="full"><span class="msym">movie</span>Video + Audio</div>
+      <div class="tab" data-content="video"><span class="msym">videocam</span>Video Only</div>
+      <div class="tab" data-content="audio"><span class="msym">music_note</span>Audio Only</div>
+    </div>
+
+    <label id="qualityLabel">Output quality</label>
     <div class="quality-grid" id="qualityGrid">
       <div class="qbtn" data-h="144"><span class="res">144p</span><span class="tag">POTATO</span></div>
       <div class="qbtn" data-h="360"><span class="res">360p</span><span class="tag">LOW-KEY</span></div>
@@ -309,11 +330,28 @@
       <div class="qbtn" data-h="1440"><span class="res">1440p</span><span class="tag">QUAD</span></div>
       <div class="qbtn" data-h="2160"><span class="res">2160p</span><span class="tag">4K FLEX</span></div>
     </div>
+    <div class="quality-grid" id="audioGrid" style="display:none;">
+      <div class="qbtn active" data-af="best"><span class="res">Best</span><span class="tag">NATIVE</span></div>
+      <div class="qbtn" data-af="mp3_320"><span class="res">MP3</span><span class="tag">320 KBPS</span></div>
+      <div class="qbtn" data-af="mp3_192"><span class="res">MP3</span><span class="tag">192 KBPS</span></div>
+      <div class="qbtn" data-af="mp3_128"><span class="res">MP3</span><span class="tag">128 KBPS</span></div>
+      <div class="qbtn" data-af="aac"><span class="res">AAC</span><span class="tag">APPLE/M4A</span></div>
+      <div class="qbtn" data-af="opus"><span class="res">OPUS</span><span class="tag">YT NATIVE</span></div>
+      <div class="qbtn" data-af="flac"><span class="res">FLAC</span><span class="tag">LOSSLESS</span></div>
+    </div>
 
-    <label>Download mode</label>
-    <div class="tabs" id="modeToggle">
-      <div class="tab active" data-mode="normal">Normal</div>
-      <div class="tab" data-mode="fast">Fast Download</div>
+    <div id="modeSection">
+      <label>Download mode</label>
+      <div class="tabs" id="modeToggle">
+        <div class="tab active" data-mode="normal"><span class="msym">download</span>Normal</div>
+        <div class="tab" data-mode="fast"><span class="msym">bolt</span>Fast Download</div>
+      </div>
+    </div>
+
+    <label>Extras</label>
+    <div class="tabs" id="extras">
+      <div class="tab" data-flag="subs"><span class="msym">subtitles</span>Subtitles (EN+BN)</div>
+      <div class="tab" data-flag="thumb"><span class="msym">image</span>Thumbnail + Meta</div>
     </div>
 
     <label>Generated command</label>
@@ -331,16 +369,26 @@
 
 <script>
   const tabs = document.getElementById('tabs');
+  const contentTabs = document.getElementById('contentTabs');
   const modeToggle = document.getElementById('modeToggle');
+  const modeSection = document.getElementById('modeSection');
+  const extras = document.getElementById('extras');
   const linkInput = document.getElementById('linkInput');
   const linkLabel = document.getElementById('linkLabel');
+  const qualityLabel = document.getElementById('qualityLabel');
   const qualityGrid = document.getElementById('qualityGrid');
+  const audioGrid = document.getElementById('audioGrid');
   const cmdOutput = document.getElementById('cmdOutput');
   const copyBtn = document.getElementById('copyBtn');
+  const subsChip = extras.querySelector('[data-flag="subs"]');
 
   let platform = 'facebook';
   let height = 720;
+  let audioFormat = 'best';
   let mode = 'normal';
+  let contentType = 'full';
+  let flagSubs = false;
+  let flagThumb = false;
 
   const PLACEHOLDERS = {
     facebook: 'https://www.facebook.com/reel/---LINK---',
@@ -353,6 +401,15 @@
     youtube: 'YouTube link',
     instagram: 'Instagram link',
     others: 'Others link'
+  };
+  const AUDIO_FORMATS = {
+    best:    { f:'ba/b' },
+    mp3_320: { f:'ba', extra:'-x --audio-format mp3 --audio-quality 0' },
+    mp3_192: { f:'ba', extra:'-x --audio-format mp3 --audio-quality 4' },
+    mp3_128: { f:'ba', extra:'-x --audio-format mp3 --audio-quality 7' },
+    aac:     { f:'ba', extra:'-x --audio-format m4a' },
+    opus:    { f:'ba', extra:'-x --audio-format opus' },
+    flac:    { f:'ba', extra:'-x --audio-format flac' }
   };
 
   function escapeHtml(str){
@@ -381,15 +438,42 @@
     return cleanYoutube(raw);
   }
 
-  function commandNormal(link, h){
-    return `python -m yt_dlp --cookies cookies.txt -f "bv*[height<=${h}]+ba/b[height<=${h}]" -o "%(title)s [%(id)s].%(ext)s" "${link}"`;
+  // -f segment (and any -x/audio-format extra that must sit right after it)
+  function formatSegment(h){
+    if(contentType === 'audio'){
+      const af = AUDIO_FORMATS[audioFormat];
+      return af.extra ? `-f ${af.f} ${af.extra}` : `-f "${af.f}"`;
+    }
+    if(contentType === 'video') return `-f "bv*[height<=${h}]"`;
+    return `-f "bv*[height<=${h}]+ba/b[height<=${h}]"`;
   }
-  function commandFast(link, h){
-    return `python -m yt_dlp -f "bv*[height<=${h}]+ba/b[height<=${h}]" --downloader aria2c --downloader-args "aria2c:-j 8 -x 8 -s 8" -o "%(title)s [%(id)s].%(ext)s" "${link}"`;
+
+  function buildCommand(link, h){
+    const effectiveFast = mode === 'fast' && contentType !== 'audio';
+    const parts = ['python -m yt_dlp'];
+    if(!effectiveFast) parts.push('--cookies cookies.txt');
+    parts.push(formatSegment(h));
+    if(effectiveFast) parts.push('--downloader aria2c --downloader-args "aria2c:-j 8 -x 8 -s 8"');
+    if(flagSubs && contentType !== 'audio') parts.push('--write-subs --embed-subs --sub-langs "en,bn"');
+    if(flagThumb) parts.push('--embed-thumbnail --embed-metadata');
+    parts.push('-o "%(title)s [%(id)s].%(ext)s"');
+    parts.push(`"${link}"`);
+    return parts.join(' ');
   }
-  function plainCommand(rawLink, h, m){
+
+  function plainCommand(rawLink, h){
     const link = cleanLink(rawLink.trim()) || '<LINK>';
-    return m === 'fast' ? commandFast(link, h) : commandNormal(link, h);
+    return buildCommand(link, h);
+  }
+
+  function updateContentUI(){
+    const isAudio = contentType === 'audio';
+    qualityGrid.style.display = isAudio ? 'none' : 'grid';
+    audioGrid.style.display = isAudio ? 'grid' : 'none';
+    qualityLabel.textContent = isAudio ? 'Audio format' : 'Output quality';
+    modeSection.style.display = isAudio ? 'none' : 'block';
+    subsChip.classList.toggle('disabled', isAudio);
+    if(isAudio && flagSubs){ flagSubs = false; subsChip.classList.remove('active'); }
   }
 
   function render(){
@@ -399,9 +483,26 @@
     const hl = `<span class="hl">${height}</span>`;
     const hlLink = `<span class="hl">${displayLink}</span>`;
     const cursor = `<span class="cursor"></span>`;
-    cmdOutput.innerHTML = mode === 'fast'
-      ? `python -m yt_dlp -f "bv*[height&lt;=${hl}]+ba/b[height&lt;=${hl}]" --downloader aria2c --downloader-args "aria2c:-j 8 -x 8 -s 8" -o "%(title)s [%(id)s].%(ext)s" "${hlLink}"${cursor}`
-      : `python -m yt_dlp --cookies cookies.txt -f "bv*[height&lt;=${hl}]+ba/b[height&lt;=${hl}]" -o "%(title)s [%(id)s].%(ext)s" "${hlLink}"${cursor}`;
+
+    const effectiveFast = mode === 'fast' && contentType !== 'audio';
+    const pieces = ['python -m yt_dlp'];
+    if(!effectiveFast) pieces.push('--cookies cookies.txt');
+
+    if(contentType === 'audio'){
+      const af = AUDIO_FORMATS[audioFormat];
+      pieces.push(af.extra ? `-f ${af.f} ${af.extra}` : `-f "${af.f}"`);
+    } else if(contentType === 'video'){
+      pieces.push(`-f "bv*[height&lt;=${hl}]"`);
+    } else {
+      pieces.push(`-f "bv*[height&lt;=${hl}]+ba/b[height&lt;=${hl}]"`);
+    }
+    if(effectiveFast) pieces.push('--downloader aria2c --downloader-args "aria2c:-j 8 -x 8 -s 8"');
+    if(flagSubs && contentType !== 'audio') pieces.push('--write-subs --embed-subs --sub-langs "en,bn"');
+    if(flagThumb) pieces.push('--embed-thumbnail --embed-metadata');
+    pieces.push('-o "%(title)s [%(id)s].%(ext)s"');
+    pieces.push(`"${hlLink}"${cursor}`);
+
+    cmdOutput.innerHTML = pieces.join(' ');
     copyBtn.disabled = !raw;
     copyBtn.classList.remove('copied');
     copyBtn.textContent = 'Copy command';
@@ -419,6 +520,16 @@
     render();
   });
 
+  contentTabs.addEventListener('click', (e) => {
+    const tab = e.target.closest('.tab');
+    if(!tab) return;
+    contentTabs.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    contentType = tab.dataset.content;
+    updateContentUI();
+    render();
+  });
+
   modeToggle.addEventListener('click', (e) => {
     const tab = e.target.closest('.tab');
     if(!tab) return;
@@ -428,12 +539,30 @@
     render();
   });
 
+  extras.addEventListener('click', (e) => {
+    const chip = e.target.closest('.tab');
+    if(!chip || chip.classList.contains('disabled')) return;
+    chip.classList.toggle('active');
+    if(chip.dataset.flag === 'subs') flagSubs = chip.classList.contains('active');
+    if(chip.dataset.flag === 'thumb') flagThumb = chip.classList.contains('active');
+    render();
+  });
+
   qualityGrid.addEventListener('click', (e) => {
     const btn = e.target.closest('.qbtn');
     if(!btn) return;
-    document.querySelectorAll('.qbtn').forEach(b => b.classList.remove('active'));
+    qualityGrid.querySelectorAll('.qbtn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     height = btn.dataset.h;
+    render();
+  });
+
+  audioGrid.addEventListener('click', (e) => {
+    const btn = e.target.closest('.qbtn');
+    if(!btn) return;
+    audioGrid.querySelectorAll('.qbtn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    audioFormat = btn.dataset.af;
     render();
   });
 
@@ -442,7 +571,7 @@
   copyBtn.addEventListener('click', async () => {
     const raw = linkInput.value.trim();
     if(!raw) return;
-    const text = plainCommand(raw, height, mode);
+    const text = plainCommand(raw, height);
     try{
       await navigator.clipboard.writeText(text);
     }catch(e){
@@ -458,6 +587,7 @@
     setTimeout(() => { copyBtn.classList.remove('copied'); copyBtn.textContent = 'Copy command'; }, 1500);
   });
 
+  updateContentUI();
   render();
 </script>
 </body>
