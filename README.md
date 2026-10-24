@@ -135,9 +135,9 @@ GrabClip is a personal-use command generator built for downloading content you h
 
 Built by **Hamim Talukder Soton**
 
-- 🌐 Live app: [GrabClip](https://hamimtalukder.github.io/GrabClip/)
-- 📘 Facebook: [hamim.talukder.soton](https://www.facebook.com/hamim.talukder.soton)
-- 💼 LinkedIn: [hamim-talukder](https://www.linkedin.com/in/hamim-talukder)
+- 🌐 Live app: <a href="https://hamimtalukder.github.io/GrabClip/" target="_blank">GrabClip</a>
+- 📘 Facebook: <a href="https://www.facebook.com/hamim.talukder.soton" target="_blank">hamim.talukder.soton</a>
+- 💼 LinkedIn: <a href="https://www.linkedin.com/in/hamim-talukder" target="_blank">hamim-talukder</a>
 
 ---
 
